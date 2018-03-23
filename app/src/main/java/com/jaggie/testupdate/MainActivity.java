@@ -18,19 +18,6 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-//        try {
-//            String sourceApkPath =getPackageManager().getApplicationInfo(getPackageName(), 0).sourceDir;
-//            String md5OfSourceApk=  HashUtils.getMd5OfFile(sourceApkPath);
-//            Toast.makeText(this, sourceApkPath+"\n"+md5OfSourceApk, Toast.LENGTH_LONG).show();
-//        } catch (PackageManager.NameNotFoundException e) {
-//            e.printStackTrace();
-//        }
-
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -58,6 +45,20 @@ public class MainActivity extends AppCompatActivity {
         }else {
             startTheCheckingService();
         }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+//        try {
+//            String sourceApkPath =getPackageManager().getApplicationInfo(getPackageName(), 0).sourceDir;
+//            String md5OfSourceApk=  HashUtils.getMd5OfFile(sourceApkPath);
+//            Toast.makeText(this, sourceApkPath+"\n"+md5OfSourceApk, Toast.LENGTH_LONG).show();
+//        } catch (PackageManager.NameNotFoundException e) {
+//            e.printStackTrace();
+//        }
+
+
     }
 
 

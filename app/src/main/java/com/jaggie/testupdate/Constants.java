@@ -5,6 +5,6 @@ package com.jaggie.testupdate;
  */
 
 public class Constants {
-    public static final String url = "https://netmobile:MobP8w@www.hkg1vl0077.p2g.netd2.hsbc.com.hk/mobile/mobileApp/native/1514g/jaggie/com.jaggie.testupdate_patches";
+    public static final String url = "https://netmobile:MobP8w@www.hkg1vl0077.p2g.netd2.hsbc.com.hk/mobile/mobileApp/native/1514g/jaggie";
 
 }
