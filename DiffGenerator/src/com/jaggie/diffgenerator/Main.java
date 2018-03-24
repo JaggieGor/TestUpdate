@@ -7,27 +7,47 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import net.dongliu.apk.parser.ApkFile;
+import net.dongliu.apk.parser.bean.ApkMeta;
+import net.dongliu.apk.parser.bean.UseFeature;
 
 public class Main {
 
 	public static void main(String args[]) {
 
 		// use third party to extract the apk package name
+		String apkFilePath = args[0];
+
+		// extra the package name for the apk files
 		String packageName = "";
+		try (ApkFile apkFile = new ApkFile(new File(apkFilePath))) {
+			ApkMeta apkMeta = apkFile.getApkMeta();
+			packageName = apkMeta.getPackageName();
+			// System.out.println(apkMeta.getLabel());
+			// System.out.println(apkMeta.getPackageName());
+			// System.out.println(apkMeta.getVersionCode());
+			// for (UseFeature feature : apkMeta.getUsesFeatures()) {
+			// System.out.println(feature.getName());
+			// }
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 		String fileSeperator = File.separator;
-		String apkFilePath = args[0];
-		String rootDirName =packageName + "_patches";;
-		String rootFilePath = "."+fileSeperator+rootDirName;
-		String infoFileName = packageName + "info";
+		String rootDirName = packageName + "_patches";
+		;
+		String rootFilePath = "." + fileSeperator + rootDirName;
+		String infoFileName = packageName + ".info";
 		String patchFileName = "patch.patch";
 		String apkFileName = packageName + ".apk";
 		File patchDir = new File(rootFilePath);
-		File latestApkFile = new File(rootFilePath + fileSeperator
-				+ apkFileName);
+		File latestApkFile = new File(rootFilePath + fileSeperator + apkFileName);
 		String pendingAddItemString = "";
 		List<String> pendingRemoveList = new ArrayList<>();
 		List<String> list;
@@ -39,31 +59,25 @@ public class Main {
 
 		if (latestApkFile.exists()) {
 			// md5 the latest old apk file
-			pendingAddItemString = HashUtils.getMd5OfFile(latestApkFile
-					.getAbsolutePath());
+			pendingAddItemString = HashUtils.getMd5OfFile(latestApkFile.getAbsolutePath());
 
 			// exists ,add a new old apk folder
-			String newItemPatchPath = rootFilePath + fileSeperator
-					+ pendingAddItemString;
+			String newItemPatchPath = rootFilePath + fileSeperator + pendingAddItemString;
 			File newItemFile = new File(newItemPatchPath);
 			newItemFile.mkdir();
 
 			// move the latest old file to patch folder to do the diff later
-			if (latestApkFile.renameTo(new File(newItemPatchPath
-					+ fileSeperator + apkFileName)))
-				;
+			if (latestApkFile.renameTo(new File(newItemPatchPath + fileSeperator + apkFileName)))
 			{
 				// move the apk file to the root folder and be the latest one
 				File apkFile = new File(apkFilePath);
-				apkFile.renameTo(new File(rootFilePath + fileSeperator
-						+ apkFileName));
+				apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
 			}
 		} else {
 			// don't exits,so you are in the initial status ,just
 			// move the apk file to the root folder and be the latest one
 			File apkFile = new File(apkFilePath);
-			apkFile.renameTo(new File(rootFilePath + fileSeperator
-					+ apkFileName));
+			apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
 		}
 
 		// read the info file
@@ -79,15 +93,13 @@ public class Main {
 		}
 
 		// add the new item into pending diff item list
-		if (pendingAddItemString != null
-				&& !"".equals(pendingAddItemString.trim())) {
+		if (pendingAddItemString != null && !"".equals(pendingAddItemString.trim())) {
 			list.add(pendingAddItemString);
 		}
 
 		// remove the pending remove items for performance saving
 		for (String pendingRemoveMD5Folder : pendingRemoveList) {
-			File file = new File(rootFilePath + fileSeperator
-					+ pendingRemoveMD5Folder);
+			File file = new File(rootFilePath + fileSeperator + pendingRemoveMD5Folder);
 			FileUtils.deleteFiles(file);
 		}
 
@@ -96,12 +108,11 @@ public class Main {
 
 		for (String md5 : list) {
 			String folder = rootFilePath + fileSeperator + md5;
-			String newPatchFilePath = rootFilePath + fileSeperator + md5
-					+ fileSeperator + patchFileName;
-			String oldApkFilePath = rootFilePath + fileSeperator + md5
-					+ fileSeperator + apkFileName;
+			String newPatchFilePath = rootFilePath + fileSeperator + md5 + fileSeperator + patchFileName;
+			String oldApkFilePath = rootFilePath + fileSeperator + md5 + fileSeperator + apkFileName;
 			String newApkFilePath = rootFilePath + fileSeperator + apkFileName;
 			// do the single diff here
+			doTheDifference(oldApkFilePath, newApkFilePath, newPatchFilePath);
 		}
 
 		// write back the current status into info file
@@ -138,8 +149,7 @@ public class Main {
 			infoFile.delete();
 		}
 		try {
-			PrintWriter out = new PrintWriter(new BufferedWriter(
-					new FileWriter(infoFile.getAbsolutePath(), true)));
+			PrintWriter out = new PrintWriter(new BufferedWriter(new FileWriter(infoFile.getAbsolutePath(), true)));
 
 			for (String md5 : lists) {
 				out.println(md5);
@@ -150,7 +160,30 @@ public class Main {
 		}
 	}
 
-	private static void doTheDifference(String oldApkFilePath,String newApkFilePath,String patchFilePath) {
+	private static void doTheDifference(String oldApkFilePath, String newApkFilePath, String patchFilePath) {
+		String commandResult=executeCommand("./bsdiff "+oldApkFilePath+" "+newApkFilePath +" "+patchFilePath);
+	}
+
+	private static String executeCommand(String command) {
+
+		StringBuffer output = new StringBuffer();
+
+		Process p;
+		try {
+			p = Runtime.getRuntime().exec(command);
+			p.waitFor();
+			BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()));
+
+			String line = "";
+			while ((line = reader.readLine()) != null) {
+				output.append(line + "\n");
+			}
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		return output.toString();
 
 	}
 }
