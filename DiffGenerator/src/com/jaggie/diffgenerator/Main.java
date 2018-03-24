@@ -4,11 +4,15 @@ import java.awt.event.ItemEvent;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +50,7 @@ public class Main {
 		String infoFileName = packageName + ".info";
 		String patchFileName = "patch.patch";
 		String apkFileName = packageName + ".apk";
+		String apkOldFileName= packageName+"_old"+".apk";
 		File patchDir = new File(rootFilePath);
 		File latestApkFile = new File(rootFilePath + fileSeperator + apkFileName);
 		String pendingAddItemString = "";
@@ -67,17 +72,19 @@ public class Main {
 			newItemFile.mkdir();
 
 			// move the latest old file to patch folder to do the diff later
-			if (latestApkFile.renameTo(new File(newItemPatchPath + fileSeperator + apkFileName)))
+			if (latestApkFile.renameTo(new File(newItemPatchPath + fileSeperator + apkOldFileName)))
 			{
-				// move the apk file to the root folder and be the latest one
-				File apkFile = new File(apkFilePath);
-				apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
+				// copy the apk file to the root folder and be the latest one
+//				apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
+				FileUtils.copyTo(apkFilePath, rootFilePath + fileSeperator + apkFileName);
 			}
 		} else {
 			// don't exits,so you are in the initial status ,just
-			// move the apk file to the root folder and be the latest one
+			// copy the apk file to the root folder and be the latest one
 			File apkFile = new File(apkFilePath);
-			apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
+//			apkFile.renameTo(new File(rootFilePath + fileSeperator + apkFileName));
+			FileUtils.copyTo(apkFilePath, rootFilePath + fileSeperator + apkFileName);
+
 		}
 
 		// read the info file
@@ -104,19 +111,17 @@ public class Main {
 		}
 
 		// TODO
-		// do the diff here
-
+		// do the differences here
 		for (String md5 : list) {
 			String folder = rootFilePath + fileSeperator + md5;
 			String newPatchFilePath = rootFilePath + fileSeperator + md5 + fileSeperator + patchFileName;
-			String oldApkFilePath = rootFilePath + fileSeperator + md5 + fileSeperator + apkFileName;
+			String oldApkFilePath = rootFilePath + fileSeperator + md5 + fileSeperator + apkOldFileName;
 			String newApkFilePath = rootFilePath + fileSeperator + apkFileName;
-			// do the single diff here
+			// do the single difference here
 			doTheDifference(oldApkFilePath, newApkFilePath, newPatchFilePath);
 		}
 
-		// write back the current status into info file
-
+		// write back the current status into xxx.info file
 		logDownRecordIntoInfo(infoFile, list);
 
 	}
@@ -161,7 +166,7 @@ public class Main {
 	}
 
 	private static void doTheDifference(String oldApkFilePath, String newApkFilePath, String patchFilePath) {
-		String commandResult=executeCommand("./bsdiff "+oldApkFilePath+" "+newApkFilePath +" "+patchFilePath);
+		String commandResult=executeCommand("."+File.separator+"bsdiff "+oldApkFilePath+" "+newApkFilePath +" "+patchFilePath);
 	}
 
 	private static String executeCommand(String command) {
