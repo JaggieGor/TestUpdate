@@ -16,6 +16,17 @@ public class FileUtils {
 
 	}
 	
+	public static void createNewFile(File pendingCreateFile) {
+		try{
+			if (pendingCreateFile!=null){
+				pendingCreateFile.createNewFile();
+			}
+		}catch(IOException e){
+			e.printStackTrace();
+		}
+
+	}
+	
 	public static void copyTo(String sourcePath,String destPath) {
 		try {
 			File apkFile = new File(sourcePath);
@@ -28,5 +39,5 @@ public class FileUtils {
 			e.printStackTrace();
 		}
 	}
-
+	
 }
