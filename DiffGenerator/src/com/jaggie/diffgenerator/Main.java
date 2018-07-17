@@ -245,16 +245,16 @@ public class Main {
 		String OS = System.getProperty("os.name", "generic").toLowerCase(
 				Locale.ENGLISH);
 		if ((OS.indexOf("mac") >= 0) || (OS.indexOf("darwin") >= 0)) {
-			commandResult = executeCommand("."+File.separator+"diffcmds"+ File.separator + "bsdiff "
+			commandResult = executeCommand("."+ File.separator + "bsdiff "
 					+ oldApkFilePath + " " + newApkFilePath + " "
 					+ patchFilePath);
 
 		} else if (OS.indexOf("win") >= 0) {
-			commandResult = executeCommand("."+File.separator+"diffcmds" + File.separator + "bsdiff.exe "
+			commandResult = executeCommand("." + File.separator + "bsdiff.exe "
 					+ oldApkFilePath + " " + newApkFilePath + " "
 					+ patchFilePath);
 		} else if (OS.indexOf("nux") >= 0) {
-			commandResult = executeCommand("."+File.separator+"diffcmds" + File.separator + "bsdiff.sh "
+			commandResult = executeCommand("."+ File.separator + "bsdiff "
 					+ oldApkFilePath + " " + newApkFilePath + " "
 					+ patchFilePath);
 		} else {
