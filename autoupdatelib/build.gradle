@@ -19,8 +19,19 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            manifestPlaceholders = [
+                    "@applicationId"       : "",
+            ]
+        }
+
+        debug{
+            manifestPlaceholders = [
+                    "@applicationId"       : "",
+            ]
         }
     }
+
+
 }
 
 dependencies {
@@ -42,6 +53,11 @@ task createJar(type: Copy) {
     into('libs/jars/')
     include('classes.jar')
     rename('classes.jar', 'autoupdatelib.jar')
+}
+
+task copyLibs(type: Copy) {
+    from configurations.compile
+    into "libs"
 }
 
 createJar.dependsOn(deleteJar, build)

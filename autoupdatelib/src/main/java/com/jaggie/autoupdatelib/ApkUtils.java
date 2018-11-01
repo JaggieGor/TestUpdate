@@ -103,7 +103,7 @@ public class ApkUtils {
         File apkFile = new File(apkPath);
         //是否是AndroidN以及更高的版本
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            Uri contentUri = FileProvider.getUriForFile(context, "com.jaggie.autoupdatelib.fileProvider", apkFile);
+            Uri contentUri = FileProvider.getUriForFile(context,context.getApplicationInfo().packageName +".fileProvider", apkFile);
             intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             intent.setDataAndType(contentUri, "application/vnd.android.package-archive");
             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);

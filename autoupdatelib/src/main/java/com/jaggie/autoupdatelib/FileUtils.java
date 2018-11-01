@@ -17,7 +17,7 @@ public class FileUtils {
     public static void deleteFiles(Context context, File pendingRemoveFile) {
 //        File pendingRemoveFile = new File(path);
         Uri pendingRemoveUri = FileProvider.getUriForFile(context,
-                        "com.jaggie.autoupdatelib.fileProvider", pendingRemoveFile);
+               context.getApplicationInfo().packageName+".fileProvider", pendingRemoveFile);
         ContentResolver contentResolver = context.getContentResolver();
         contentResolver.delete(pendingRemoveUri, null, null);
     }

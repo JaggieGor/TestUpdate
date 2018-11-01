@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -44,17 +45,23 @@ public class AutoUpdateMain  {
 
                 // No explanation needed, we can request the permission.
 
-                ActivityCompat.requestPermissions(mContext,
-                        new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                        TEST_UPDATE_PERMISSIONS_REQUEST_CODE);
+
 
                 // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
                 // app-defined int constant. The callback method gets the
                 // result of the request.
 
             }
+
+            ActivityCompat.requestPermissions(mContext,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    TEST_UPDATE_PERMISSIONS_REQUEST_CODE);
         } else {
-            startTheCheckingServiceStandlone(mContext, patchServerUrlPre);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                mContext.onRequestPermissionsResult(TEST_UPDATE_PERMISSIONS_REQUEST_CODE, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},new int[]{PackageManager.PERMISSION_GRANTED});
+            }else{
+               startTheCheckingServiceStandlone(mContext, patchServerUrlPre);
+            }
         }
     }
 
