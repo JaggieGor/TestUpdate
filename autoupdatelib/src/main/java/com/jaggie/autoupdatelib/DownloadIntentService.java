@@ -1,11 +1,15 @@
 package com.jaggie.autoupdatelib;
 
+import android.annotation.TargetApi;
 import android.app.IntentService;
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.os.Build;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Base64;
@@ -47,10 +51,10 @@ public class DownloadIntentService extends IntentService {
     private static final String KEY_OF_PATCH_SERVER_URL = "urlPre";
     private static final String KEY_OF_IS_SILENT_DOWNLOAD="isSilentDownload";
     private static final int NOTIFICATION_S_ID = 1;
+    private static final String NOTIFICATION_CHANNEL_ID="auto_update";
 
     private NotificationManager mNotificationManager;
     private NotificationCompat.Builder mBuilder;
-    private boolean isSilentDownload;
 
     @Override
     public void onCreate() {
@@ -67,7 +71,10 @@ public class DownloadIntentService extends IntentService {
     //build the notification
     private Notification genNotification() {
         //创建NotificationCompat.Builder
-        mBuilder = new NotificationCompat.Builder(this);
+        if(Build.VERSION.SDK_INT>=26) {
+            createNotificationChannel();
+        }
+        mBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
         mBuilder.setSmallIcon(R.drawable.ic_download_nc_small);
 //        mBuilder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
         mBuilder.setContentTitle("AutoUpdate");//设置标题
@@ -98,6 +105,16 @@ public class DownloadIntentService extends IntentService {
         }
 
     }
+
+    @TargetApi(26)
+    private void createNotificationChannel(){
+        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID,
+            "AutoUpdate", NotificationManager.IMPORTANCE_DEFAULT);
+        channel.enableLights(true); //是否在桌面icon右上角展示小红点
+        channel.setLightColor(Color.RED); //小红点颜色
+//        channel.setShowBadge(true); //是否在久按桌面图标时显示此渠道的通知
+        mNotificationManager.createNotificationChannel(channel);
+        }
 
     @Override
     protected void onHandleIntent(Intent intent) {
@@ -161,16 +178,13 @@ public class DownloadIntentService extends IntentService {
         OutputStream output = null;
         HttpsURLConnection connection = null;
         try {
-            String lastestApkDownLoadLink = netBaseUrl + pathSeparator + getPackageName() + "_latest.apk";
+            String latestApkDownLoadLink = netBaseUrl + pathSeparator + getPackageName() + "_latest.apk";
             String currentTagCheckLink = netBaseUrl + pathSeparator + md5OfOldApk + ".tag";
             connection = doTheConnection(currentTagCheckLink);
             if (connection != null) {
                 //no new version updated
                 Log.d(TAG, "no new version updated");
             } else {
-                if (connection != null) {
-                    connection.disconnect();
-                }
                 String downloadPath = "";
                 HttpsURLConnection patchConnection = doTheConnection(netBaseUrl + pathSeparator + md5OfOldApk + pathSeparator + fixedPatchFileName);
                 if (patchConnection != null) {
@@ -182,7 +196,7 @@ public class DownloadIntentService extends IntentService {
                     canBePatched = true;
                 } else {
                     // no patch found, need to download the whole package to upgrade
-                    connection = doTheConnection(lastestApkDownLoadLink);
+                    connection = doTheConnection(latestApkDownLoadLink);
                     downloadPath = newPackagePath;
                     if (connection!=null) {
                         Log.d(TAG, "no patch found, need to download the whole package to upgrade");
@@ -193,6 +207,7 @@ public class DownloadIntentService extends IntentService {
                 // this will be useful to display download percentage
                 // might be -1: server did not report the length
                 if (connection != null) {
+                    try {
                     int fileLength = connection.getContentLength();
                     // download the file
                     input = connection.getInputStream();
@@ -223,7 +238,7 @@ public class DownloadIntentService extends IntentService {
                         }
                     }
 
-                    try {
+
                         //do the patching, the new package will be generated in the newPackagePath
                         if (canBePatched) {
                             EasyIncrementalUpdate.patch(oldPackagePath, newPackagePath, patchDownloadPath);
@@ -236,6 +251,17 @@ public class DownloadIntentService extends IntentService {
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
+                    }finally {
+                        try {
+                            if (output != null)
+                                output.close();
+                            if (input != null)
+                                input.close();
+                            if (connection != null)
+                                connection.disconnect();
+                        } catch (IOException ignored) {
+                            // ignore this exception
+                        }
                     }
                 }
 
@@ -243,24 +269,27 @@ public class DownloadIntentService extends IntentService {
 
         } catch (Exception e) {
             e.printStackTrace();
+
         } finally {
             try {
-                if (output != null)
+                if (output != null ){
                     output.close();
-                if (input != null)
+                }
+                if (input != null) {
                     input.close();
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
             } catch (IOException ignored) {
                 // ignore this exception
             }
-            if (connection != null)
-                connection.disconnect();
+
         }
 
     }
 
     private HttpsURLConnection doTheConnection(String link) {
-        InputStream input = null;
-        OutputStream output = null;
         HttpsURLConnection connection = null;
         try {
             URL url = new URL(link);
@@ -289,6 +318,9 @@ public class DownloadIntentService extends IntentService {
 //                throw new RuntimeException("Server returned HTTP " + connection.getResponseCode()
 //                        + " " + connection.getResponseMessage());
                 Log.d(TAG, "http statuscode:"+connection.getResponseCode()+"---["+link+"]");
+                connection.getInputStream().close();
+                connection.disconnect();
+                connection=null;
                 return null;
             } else {
                 Log.d(TAG, "http statuscode:"+connection.getResponseCode()+"---["+link+"]");
@@ -296,17 +328,10 @@ public class DownloadIntentService extends IntentService {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            if (connection != null)
+                connection.disconnect();
         } finally {
-            try {
-                if (output != null)
-                    output.close();
-                if (input != null)
-                    input.close();
-            } catch (IOException ignored) {
-                // ignore this exception
-            }
-//            if (connection != null)
-//                connection.disconnect();
+
         }
         return null;
     }
