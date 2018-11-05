@@ -73,8 +73,11 @@ public class DownloadIntentService extends IntentService {
         //创建NotificationCompat.Builder
         if(Build.VERSION.SDK_INT>=26) {
             createNotificationChannel();
+            mBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
+        }else{
+            mBuilder = new NotificationCompat.Builder(this);
+
         }
-        mBuilder = new NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID);
         mBuilder.setSmallIcon(R.drawable.ic_download_nc_small);
 //        mBuilder.setLargeIcon(BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher));
         mBuilder.setContentTitle("AutoUpdate");//设置标题
