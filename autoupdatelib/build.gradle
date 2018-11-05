@@ -67,7 +67,7 @@ createJar.dependsOn(deleteJar, build)
 
 
 // This is the library version used when deploying the artifact
-version = "1.0.0"
+version = "1.0.1"
 
 def siteUrl = 'https://github.com/JaggieGor/TestUpdate'      // 项目的主页
 def gitUrl = 'https://github.com/JaggieGor/TestUpdate.git'   // Git仓库的url
