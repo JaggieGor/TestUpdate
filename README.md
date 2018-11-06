@@ -7,13 +7,14 @@
 
 #### Maven
 
-`` <dependency>
-  <groupId>com.jaggie.autoupdatelib</groupId>
-  <artifactId>autoupdatelib</artifactId>
-  <version>1.0.1</version>
-  <type>pom</type>
+``` 
+<dependency>
+    <groupId>com.jaggie.autoupdatelib</groupId>
+    <artifactId>autoupdatelib</artifactId>
+    <version>1.0.1</version>
+    <type>pom</type>
 </dependency>
-``
+```
 
 # TestUpdate
 
