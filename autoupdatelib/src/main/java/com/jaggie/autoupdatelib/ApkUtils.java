@@ -10,6 +10,7 @@ import android.os.Build;
 import android.support.v4.content.FileProvider;
 import android.text.TextUtils;
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.List;
 
@@ -112,7 +113,42 @@ public class ApkUtils {
             intent.setDataAndType(Uri.fromFile(apkFile), "application/vnd.android.package-archive");
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
+        //collapse the status Bar
+        collapseStatusBar(context);
         context.startActivity(intent);
+
+    }
+
+    public static final void collapseStatusBar(Context ctx) {
+        Object sbservice = ctx.getSystemService("statusbar");
+        try {
+            Class<?> statusBarManager = Class.forName("android.app.StatusBarManager");
+            Method collapse;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                collapse = statusBarManager.getMethod("collapsePanels");
+            } else {
+                collapse = statusBarManager.getMethod("collapse");
+            }
+            collapse.invoke(sbservice);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static final void expandStatusBar(Context ctx) {
+        Object sbservice = ctx.getSystemService("statusbar");
+        try {
+            Class<?> statusBarManager = Class.forName("android.app.StatusBarManager");
+            Method expand;
+            if (Build.VERSION.SDK_INT >= 17) {
+                expand = statusBarManager.getMethod("expandNotificationsPanel");
+            } else {
+                expand = statusBarManager.getMethod("expand");
+            }
+            expand.invoke(sbservice);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
 

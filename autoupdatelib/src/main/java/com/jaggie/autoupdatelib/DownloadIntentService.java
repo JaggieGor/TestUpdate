@@ -10,16 +10,19 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
+import android.os.Environment;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -121,171 +124,188 @@ public class DownloadIntentService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-        boolean isSilentDownload = intent.getBooleanExtra(KEY_OF_IS_SILENT_DOWNLOAD,false);
-        if (!isSilentDownload) {
-            startForeground(NOTIFICATION_S_ID, genNotification());
-        }
-        //  url prefix of patch storage server
-        String patchServerUrl = intent.getStringExtra(KEY_OF_PATCH_SERVER_URL);
-
         //local storage root path of device
-        String storagePath = this.getExternalFilesDir(null).getPath();
+//        String storagePath = this.getExternalFilesDir(null).getPath();
+        String storagePath=null;
+        if (!Environment.MEDIA_MOUNTED.equals(Environment.getExternalStorageState())) {
+            // Load another directory, probably local memory
 
-        // define path of storing the patches in device
-        String patchesPathPrefix = storagePath + pathSeparator + getPackageName() + "_patches";
+            //raise error
+//            Toast.makeText(this,"SD card not mounted!",Toast.LENGTH_LONG).show();
+            Log.e(TAG, "SD card not mounted!");
+            stopSelf();
+        } else {
+            // We can read and write the media
+            storagePath = this.getExternalFilesDir(null).getPath();
 
-        //define path of storing the patches online
-        String netBaseUrl = patchServerUrl + pathSeparator + getPackageName() + "_patches";
-
-        //md5 value of current apk
-        String md5OfOldApk = "";
-
-        //patch file file_name
-        String fixedPatchFileName = "patch.patch";
-
-        //local patch file download path
-        String patchDownloadPath = "";
-
-        //local new apk storage path
-        String newPackagePath = "";
-
-        //local old apk storage path
-        String oldPackagePath = "";
-
-        //define if need to be patched for current apk
-        boolean canBePatched = false;
-
-
-        try {
-            oldPackagePath = getPackageManager().getApplicationInfo(getPackageName(), 0).sourceDir;
-            md5OfOldApk = HashUtils.getMd5OfFile(oldPackagePath);
-            patchDownloadPath = patchesPathPrefix + pathSeparator + md5OfOldApk + pathSeparator + fixedPatchFileName;
-            //clear tmp files
-            File pendingRemoveDir = new File(patchesPathPrefix);
-            if (pendingRemoveDir.exists()) {
-                FileUtils.deleteFiles(pendingRemoveDir);
-//                this.deleteFile(patchesPathPrefix);
+            boolean isSilentDownload = intent.getBooleanExtra(KEY_OF_IS_SILENT_DOWNLOAD, false);
+            if (!isSilentDownload) {
+                startForeground(NOTIFICATION_S_ID, genNotification());
             }
-            //create the cache dir
-            File file = new File(patchDownloadPath);
-            file.getParentFile().mkdirs();
-//            String newPackageFileName =getPackageName().replaceAll("\\.","_");
-            String newPackageFileName = "new";
-            newPackagePath = patchesPathPrefix + pathSeparator + newPackageFileName + ".apk";
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        //Do your downloading here.
-        InputStream input = null;
-        OutputStream output = null;
-        HttpsURLConnection connection = null;
-        try {
-            String latestApkDownLoadLink = netBaseUrl + pathSeparator + getPackageName() + "_latest.apk";
-            String currentTagCheckLink = netBaseUrl + pathSeparator + md5OfOldApk + ".tag";
-            connection = doTheConnection(currentTagCheckLink);
-            if (connection != null) {
-                //no new version updated
-                Log.d(TAG, "no new version updated");
-            } else {
-                String downloadPath = "";
-                HttpsURLConnection patchConnection = doTheConnection(netBaseUrl + pathSeparator + md5OfOldApk + pathSeparator + fixedPatchFileName);
-                if (patchConnection != null) {
-                    //there is a patch for this version, download it and use it
-                    Log.d(TAG, "there is a patch for this version, download it and use it");
-
-                    connection = patchConnection;
-                    downloadPath = patchDownloadPath;
-                    canBePatched = true;
-                } else {
-                    // no patch found, need to download the whole package to upgrade
-                    connection = doTheConnection(latestApkDownLoadLink);
-                    downloadPath = newPackagePath;
-                    if (connection!=null) {
-                        Log.d(TAG, "no patch found, need to download the whole package to upgrade");
-                    }else {
-                        Log.d(TAG, "no patch and latest package found in server!");
-                    }
-                }
-                // this will be useful to display download percentage
-                // might be -1: server did not report the length
-                if (connection != null) {
-                    try {
-                    int fileLength = connection.getContentLength();
-                    // download the file
-                    input = connection.getInputStream();
-                    output = new FileOutputStream(downloadPath);
-//                    output =this.openFileOutput(downloadPath,MODE_PRIVATE);
-                    byte data[] = new byte[4096];
-                    int total = 0;
-                    int count;
-                    int progress = 0;
-                    while ((count = input.read(data)) != -1) {
-                        // allow canceling with back button
-                        total += count;
-                        // publishing the progress....
-                        if (fileLength > 0) { // only if total length is known
-//                    publishProgress((int) (total * 100 / fileLength));
-                            //Log down the progress
-                            progress = (int) (total * 100 / fileLength);
-                        }
-                        output.write(data, 0, count);
-                        if(!isSilentDownload) {
-                            mBuilder.setProgress((int) fileLength, total, false);
-                            if (canBePatched) {
-                                mBuilder.setContentText("Patch downloading[" + sizeOfByte(fileLength) + "]: " + progress + "%");
-                            } else {
-                                mBuilder.setContentText("Whole package downloading[" + sizeOfByte(fileLength) + "]: " + progress + "%");
-                            }
-                            mNotificationManager.notify(NOTIFICATION_S_ID, mBuilder.build());
-                        }
-                    }
+            //  url prefix of patch storage server
+            String patchServerUrl = intent.getStringExtra(KEY_OF_PATCH_SERVER_URL);
 
 
-                        //do the patching, the new package will be generated in the newPackagePath
-                        if (canBePatched) {
-                            EasyIncrementalUpdate.patch(oldPackagePath, newPackagePath, patchDownloadPath);
-                        }
-                        ApkUtils.installApk(this, newPackagePath);
+            // Make sure it's available
 
-                        //can cancel the notification when it exists
-                        if(!isSilentDownload) {
-                            mNotificationManager.cancel(NOTIFICATION_S_ID);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }finally {
-                        try {
-                            if (output != null)
-                                output.close();
-                            if (input != null)
-                                input.close();
-                            if (connection != null)
-                                connection.disconnect();
-                        } catch (IOException ignored) {
-                            // ignore this exception
-                        }
-                    }
-                }
 
-            }
+            // define path of storing the patches in device
+            String patchesPathPrefix = storagePath + pathSeparator + getPackageName() + "_patches";
 
-        } catch (Exception e) {
-            e.printStackTrace();
+            //define path of storing the patches online
+            String netBaseUrl = patchServerUrl + pathSeparator + getPackageName() + "_patches";
 
-        } finally {
+            //md5 value of current apk
+            String md5OfOldApk = "";
+
+            //patch file file_name
+            String fixedPatchFileName = "patch.patch";
+
+            //local patch file download path
+            String patchDownloadPath = "";
+
+            //local new apk storage path
+            String newPackagePath = "";
+
+            //local old apk storage path
+            String oldPackagePath = "";
+
+            //define if need to be patched for current apk
+            boolean canBePatched = false;
+
+
             try {
-                if (output != null ){
-                    output.close();
+                oldPackagePath = getPackageManager().getApplicationInfo(getPackageName(), 0).sourceDir;
+                md5OfOldApk = HashUtils.getMd5OfFile(oldPackagePath);
+                patchDownloadPath = patchesPathPrefix + pathSeparator + md5OfOldApk + pathSeparator + fixedPatchFileName;
+                //clear tmp files
+                File pendingRemoveDir = new File(patchesPathPrefix);
+                if (pendingRemoveDir.exists()) {
+                    FileUtils.deleteFiles(pendingRemoveDir);
+//                this.deleteFile(patchesPathPrefix);
                 }
-                if (input != null) {
-                    input.close();
-                }
+                //create the cache dir
+                File file = new File(patchDownloadPath);
+                file.getParentFile().mkdirs();
+//            String newPackageFileName =getPackageName().replaceAll("\\.","_");
+                String newPackageFileName = "new";
+                newPackagePath = patchesPathPrefix + pathSeparator + newPackageFileName + ".apk";
+            } catch (PackageManager.NameNotFoundException e) {
+                e.printStackTrace();
+            }
+
+            //Do your downloading here.
+            InputStream input = null;
+            OutputStream output = null;
+            HttpsURLConnection connection = null;
+            try {
+                String latestApkDownLoadLink = netBaseUrl + pathSeparator + getPackageName() + "_latest.apk";
+                String currentTagCheckLink = netBaseUrl + pathSeparator + md5OfOldApk + ".tag";
+                connection = doTheConnection(currentTagCheckLink);
                 if (connection != null) {
-                    connection.disconnect();
+                    //no new version updated
+                    Log.d(TAG, "no new version updated");
+                } else {
+                    String downloadPath = "";
+                    HttpsURLConnection patchConnection = doTheConnection(netBaseUrl + pathSeparator + md5OfOldApk + pathSeparator + fixedPatchFileName);
+                    if (patchConnection != null) {
+                        //there is a patch for this version, download it and use it
+                        Log.d(TAG, "there is a patch for this version, download it and use it");
+
+                        connection = patchConnection;
+                        downloadPath = patchDownloadPath;
+                        canBePatched = true;
+                    } else {
+                        // no patch found, need to download the whole package to upgrade
+                        connection = doTheConnection(latestApkDownLoadLink);
+                        downloadPath = newPackagePath;
+                        if (connection != null) {
+                            Log.d(TAG, "no patch found, need to download the whole package to upgrade");
+                        } else {
+                            Log.d(TAG, "no patch and latest package found in server!");
+                        }
+                    }
+                    // this will be useful to display download percentage
+                    // might be -1: server did not report the length
+                    if (connection != null) {
+                        try {
+                            int fileLength = connection.getContentLength();
+                            // download the file
+                            input = connection.getInputStream();
+                            output = new FileOutputStream(downloadPath);
+//                    output =this.openFileOutput(downloadPath,MODE_PRIVATE);
+                            byte data[] = new byte[4096];
+                            int total = 0;
+                            int count;
+                            int progress = 0;
+                            while ((count = input.read(data)) != -1) {
+                                // allow canceling with back button
+                                total += count;
+                                // publishing the progress....
+                                if (fileLength > 0) { // only if total length is known
+//                    publishProgress((int) (total * 100 / fileLength));
+                                    //Log down the progress
+                                    progress = (int) (total * 100 / fileLength);
+                                }
+                                output.write(data, 0, count);
+                                if (!isSilentDownload) {
+                                    mBuilder.setProgress((int) fileLength, total, false);
+                                    if (canBePatched) {
+                                        mBuilder.setContentText("Patch downloading[" + sizeOfByte(fileLength) + "]: " + progress + "%");
+                                    } else {
+                                        mBuilder.setContentText("Whole package downloading[" + sizeOfByte(fileLength) + "]: " + progress + "%");
+                                    }
+                                    mNotificationManager.notify(NOTIFICATION_S_ID, mBuilder.build());
+                                }
+                            }
+
+
+                            //do the patching, the new package will be generated in the newPackagePath
+                            if (canBePatched) {
+                                EasyIncrementalUpdate.patch(oldPackagePath, newPackagePath, patchDownloadPath);
+                            }
+                            ApkUtils.installApk(this, newPackagePath);
+
+                            //can cancel the notification when it exists
+                            if (!isSilentDownload) {
+                                mNotificationManager.cancel(NOTIFICATION_S_ID);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        } finally {
+                            try {
+                                if (output != null)
+                                    output.close();
+                                if (input != null)
+                                    input.close();
+                                if (connection != null)
+                                    connection.disconnect();
+                            } catch (IOException ignored) {
+                                // ignore this exception
+                            }
+                        }
+                    }
+
                 }
-            } catch (IOException ignored) {
-                // ignore this exception
+
+            } catch (Exception e) {
+                e.printStackTrace();
+
+            } finally {
+                try {
+                    if (output != null) {
+                        output.close();
+                    }
+                    if (input != null) {
+                        input.close();
+                    }
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                } catch (IOException ignored) {
+                    // ignore this exception
+                }
+
             }
 
         }
@@ -297,7 +317,7 @@ public class DownloadIntentService extends IntentService {
         try {
             URL url = new URL(link);
             connection = (HttpsURLConnection) url.openConnection();
-            connection.setRequestMethod("POST");
+            connection.setRequestMethod("GET");
             connection.setDoOutput(false);
             connection.setConnectTimeout(10 * 1000);
             connection.setReadTimeout(10 * 1000);
@@ -369,6 +389,8 @@ public class DownloadIntentService extends IntentService {
             e.printStackTrace();
         }
     }
+
+
 
 
     public static Intent getDownloadIntent(Context context, String patchServerUrlPre,boolean isSilentDownload) {
