@@ -49,3 +49,14 @@ google-services.json
 freeline.py
 freeline/
 freeline_project_description.json
+
+#visual studio code
+.DS_Store
+.idea/misc.xml
+
+#app building
+app/debug
+
+DiffGenerator/.classpath
+.idea/misc.xml
+
